@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- face -->
+    <path
+        android:fillColor="#FFD5B8"
+        android:pathData="M34,48 C34,30 74,30 74,48 C74,72 34,72 34,48 Z"/>
+    <!-- hair -->
+    <path
+        android:fillColor="#8B8B8B"
+        android:pathData="M30,48 C30,28 78,28 78,48 C78,52 76,56 72,56 L36,56 C32,56 30,52 30,48 Z"/>
+    <path
+        android:fillColor="#8B8B8B"
+        android:pathData="M30,48 C28,40 32,30 38,26 L48,20 L58,26 C64,30 68,40 66,48 Z"/>
+    <!-- hat (Wu Peng boat) -->
+    <path
+        android:fillColor="#C9A84C"
+        android:pathData="M26,42 C26,34 82,34 82,42 C82,50 26,50 26,42 Z"/>
+    <path
+        android:fillColor="#A88830"
+        android:pathData="M28,40 L80,40 L80,44 L28,44 Z"/>
+    <path
+        android:fillColor="#C9A84C"
+        android:pathData="M20,40 L26,42 L82,42 L88,40 Z"/>
+    <!-- eyes -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M44,52 C44,50 48,50 48,52 C48,54 44,54 44,52 Z"/>
+    <path
+        android:fillColor="#333333"
+        android:pathData="M60,52 C60,50 64,50 64,52 C64,54 60,54 60,52 Z"/>
+    <!-- smile -->
+    <path
+        android:fillColor="#D4926A"
+        android:strokeColor="#D4926A"
+        android:strokeWidth="1.5"
+        android:pathData="M46,62 Q54,70 62,62"/>
+    <!-- cheeks -->
+    <path
+        android:fillColor="#FFB8A0"
+        android:fillAlpha="0.5"
+        android:pathData="M38,58 C38,56 42,56 42,58 C42,60 38,60 38,58 Z"/>
+    <path
+        android:fillColor="#FFB8A0"
+        android:fillAlpha="0.5"
+        android:pathData="M66,58 C66,56 70,56 70,58 C70,60 66,60 66,58 Z"/>
+</vector>

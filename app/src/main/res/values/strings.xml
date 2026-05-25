@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小希司</string>
+    <string name="accessibility_service_desc">小希司需要使用无障碍服务来读取屏幕内容和辅助操作手机，帮助您更方便地使用智能手机。</string>
+</resources>

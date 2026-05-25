@@ -1,0 +1,21 @@
+## 小希司 API Key 配置模板
+## 复制此文件为 local.properties 并填入真实 Key
+## local.properties 已加入 .gitignore，不会被提交到仓库
+
+# 科大讯飞语音识别（方言ASR）
+xiaoxisi.asr.apiKey=YOUR_IFLYTEK_ASR_API_KEY
+xiaoxisi.asr.apiSecret=YOUR_IFLYTEK_ASR_API_SECRET
+xiaoxisi.asr.appId=YOUR_IFLYTEK_ASR_APP_ID
+
+# LLM API（通义千问 / DeepSeek 二选一）
+xiaoxisi.llm.provider=qwen
+xiaoxisi.llm.apiKey=YOUR_LLM_API_KEY
+xiaoxisi.llm.baseUrl=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# DeepSeek 备选
+# xiaoxisi.llm.provider=deepseek
+# xiaoxisi.llm.apiKey=YOUR_DEEPSEEK_API_KEY
+# xiaoxisi.llm.baseUrl=https://api.deepseek.com/v1
+
+# TTS（系统内置 TTS 无需配置，此处为 Edge-TTS 备选）
+# xiaoxisi.tts.edge.enabled=false
