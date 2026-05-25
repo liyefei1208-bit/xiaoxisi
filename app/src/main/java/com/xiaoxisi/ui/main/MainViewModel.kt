@@ -2,6 +2,7 @@ package com.xiaoxisi.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.xiaoxisi.automation.action.ActionExecutor
 import com.xiaoxisi.core.config.ApiConfig
 import com.xiaoxisi.data.repository.MessageRepository
@@ -101,6 +102,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun sendText(text: String) {
+        Log.d("Xiaoxisi-VM", "sendText: '$text'")
         _uiState.value = _uiState.value.copy(isProcessing = true)
 
         viewModelScope.launch {
@@ -114,6 +116,7 @@ class MainViewModel @Inject constructor(
             val context = dialogueManager.getContext()
             val result = processTextInput(text, context)
 
+            Log.d("Xiaoxisi-VM", "sendText result: intent=${result.intent::class.simpleName}, reply=${result.replyText}")
             handleAssistantResponse(
                 userText = text,
                 replyText = result.replyText,
@@ -145,7 +148,10 @@ class MainViewModel @Inject constructor(
 
             if (intent !is com.xiaoxisi.domain.model.Intent.Chat &&
                 intent !is com.xiaoxisi.domain.model.Intent.Unknown) {
+                Log.d("Xiaoxisi-VM", "handleAssistantResponse: executing intent ${intent::class.simpleName}")
                 actionExecutor.execute(intent)
+            } else {
+                Log.d("Xiaoxisi-VM", "handleAssistantResponse: skipping execution for ${intent::class.simpleName}")
             }
 
             _uiState.value = _uiState.value.copy(
@@ -159,7 +165,12 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             messageRepository.clearAll()
             dialogueManager.clear()
-            _uiState.value = MainUiState()
+            _uiState.value = _uiState.value.copy(
+                messages = emptyList(),
+                isRecording = false,
+                isProcessing = false,
+                errorMessage = null
+            )
         }
     }
 

@@ -2,10 +2,12 @@ package com.xiaoxisi.domain.usecase
 
 import com.xiaoxisi.core.config.ApiConfig
 import com.xiaoxisi.domain.model.ConversationContext
+import com.xiaoxisi.domain.model.Intent
 import com.xiaoxisi.domain.model.IntentResult
 import com.xiaoxisi.domain.model.Message
 import com.xiaoxisi.domain.model.MessageRole
 import com.xiaoxisi.nlu.LlmIntentClassifier
+import com.xiaoxisi.nlu.LocalIntentMatcher
 import com.xiaoxisi.nlu.EntityExtractor
 import com.xiaoxisi.voice.AsrEngine
 import javax.inject.Inject
@@ -15,6 +17,7 @@ import javax.inject.Singleton
 class ProcessVoiceInputUseCase @Inject constructor(
     private val asrEngine: AsrEngine,
     private val classifier: LlmIntentClassifier,
+    private val localMatcher: LocalIntentMatcher,
     private val entityExtractor: EntityExtractor
 ) {
     suspend operator fun invoke(
@@ -30,10 +33,19 @@ class ProcessVoiceInputUseCase @Inject constructor(
         val recognizedText = asrEngine.recognize(audioData)
             .getOrElse { return Result.failure(it) }
 
-        val classification = classifier.classify(
-            recognizedText,
-            buildContextString(context)
-        )
+        val classification = try {
+            val llmResult = classifier.classify(
+                recognizedText,
+                buildContextString(context)
+            )
+            if (llmResult.intent is Intent.Unknown) {
+                localMatch(recognizedText)
+            } else {
+                llmResult
+            }
+        } catch (e: Exception) {
+            localMatch(recognizedText)
+        }
 
         return Result.success(
             VoiceProcessResult(
@@ -58,4 +70,14 @@ class ProcessVoiceInputUseCase @Inject constructor(
         val recognizedText: String,
         val intentResult: IntentResult
     )
+
+    private fun localMatch(text: String): LlmIntentClassifier.LcResult {
+        val result = localMatcher.match(text)
+        return LlmIntentClassifier.LcResult(
+            recognizedText = text,
+            intent = result.intent,
+            replyText = result.replyText,
+            entities = result.entities
+        )
+    }
 }

@@ -1,5 +1,6 @@
 package com.xiaoxisi.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +70,8 @@ data class VoiceType(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+
     var speed by remember { mutableFloatStateOf(1.0f) }
     var volume by remember { mutableFloatStateOf(0.8f) }
     var selectedDialect by remember { mutableStateOf("绍兴话") }

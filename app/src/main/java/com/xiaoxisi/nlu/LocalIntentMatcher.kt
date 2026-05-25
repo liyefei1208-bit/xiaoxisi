@@ -1,5 +1,6 @@
 package com.xiaoxisi.nlu
 
+import android.util.Log
 import com.xiaoxisi.domain.model.Intent
 import com.xiaoxisi.domain.model.SettingType
 import javax.inject.Inject
@@ -7,6 +8,10 @@ import javax.inject.Singleton
 
 @Singleton
 class LocalIntentMatcher @Inject constructor() {
+
+    companion object {
+        private const val TAG = "Xiaoxisi-LocalMatch"
+    }
 
     data class MatchResult(
         val intent: Intent,
@@ -16,9 +21,11 @@ class LocalIntentMatcher @Inject constructor() {
 
     fun match(userText: String): MatchResult {
         val text = userText.trim()
+        Log.d(TAG, "match input: '$text'")
 
         when {
             matchesWifi(text) -> {
+                Log.d(TAG, "matched: WIFI")
                 return if (text.contains("开") || text.contains("连") || text.contains("打")) {
                     MatchResult(
                         intent = Intent.SystemSetting(SettingType.WIFI, "open"),
@@ -35,6 +42,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesBrightness(text) -> {
+                Log.d(TAG, "matched: BRIGHTNESS")
                 return if (text.contains("暗")) {
                     MatchResult(
                         intent = Intent.SystemSetting(SettingType.BRIGHTNESS, "down"),
@@ -51,6 +59,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesVolume(text) -> {
+                Log.d(TAG, "matched: VOLUME")
                 val up = text.contains("大") || text.contains("响") || text.contains("高")
                 return MatchResult(
                     intent = Intent.SystemSetting(SettingType.VOLUME, if (up) "up" else "down"),
@@ -60,6 +69,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesFontSize(text) -> {
+                Log.d(TAG, "matched: FONT_SIZE")
                 return MatchResult(
                     intent = Intent.SystemSetting(SettingType.FONT_SIZE, "up"),
                     replyText = "已打开显示设置，往下翻找到「字体大小」就能调了。",
@@ -68,6 +78,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesDial(text) -> {
+                Log.d(TAG, "matched: DIAL")
                 val name = extractName(text) ?: ""
                 return if (name.isNotBlank()) {
                     MatchResult(
@@ -85,6 +96,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesHangup(text) -> {
+                Log.d(TAG, "matched: HANGUP")
                 return MatchResult(
                     intent = Intent.Phone(com.xiaoxisi.domain.model.PhoneAction.HANGUP),
                     replyText = "好的，电话已挂断。你也可以按手机上的红色挂断按钮。",
@@ -93,6 +105,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesOpenApp(text) -> {
+                Log.d(TAG, "matched: OPEN_APP")
                 val appName = extractAppName(text) ?: ""
                 return if (appName.isNotBlank()) {
                     MatchResult(
@@ -110,6 +123,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             matchesInstallApp(text) -> {
+                Log.d(TAG, "matched: INSTALL_APP")
                 val appName = extractAppName(text) ?: ""
                 return if (appName.isNotBlank()) {
                     MatchResult(
@@ -127,6 +141,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             isGreeting(text) -> {
+                Log.d(TAG, "matched: GREETING")
                 return MatchResult(
                     intent = Intent.Chat(),
                     replyText = "侬好呀！有撒事体需要我帮忙伐？",
@@ -135,6 +150,7 @@ class LocalIntentMatcher @Inject constructor() {
             }
 
             else -> {
+                Log.d(TAG, "matched: UNKNOWN, falling back")
                 return MatchResult(
                     intent = Intent.Unknown(0.3f),
                     replyText = "不太确定你想做什么，能换个说法试试吗？比如试试说「打开微信」或者「屏幕太暗哉」。",
@@ -151,8 +167,9 @@ class LocalIntentMatcher @Inject constructor() {
     }
 
     private fun matchesBrightness(text: String): Boolean {
-        val keywords = listOf("亮", "暗", "屏幕", "光")
-        return keywords.any { text.contains(it) }
+        val keywords = listOf("亮", "暗", "屏幕", "光", "亮度", "太亮", "太暗", "暗哉")
+        return keywords.any { text.contains(it) } &&
+            !text.contains("音") && !text.contains("声") && !text.contains("wifi") && !text.contains("WiFi")
     }
 
     private fun matchesVolume(text: String): Boolean {
@@ -178,9 +195,12 @@ class LocalIntentMatcher @Inject constructor() {
     }
 
     private fun matchesOpenApp(text: String): Boolean {
-        val keywords = listOf("打开", "开", "点开")
-        return keywords.any { text.contains(it) } &&
-            !text.contains("电话") && !text.contains("wifi") && !text.contains("设置")
+        val openKeywords = listOf("打开", "开", "点开", "帮我开", "我要用", "用一下", "看看")
+        val hasOpen = openKeywords.any { text.contains(it) }
+        val notSettings = !text.contains("wifi") && !text.contains("WiFi") && !text.contains("Wi-Fi") &&
+            !text.contains("无线") && !text.contains("上网") && !text.contains("网络") &&
+            !text.contains("连") && !text.contains("设置")
+        return hasOpen && notSettings
     }
 
     private fun matchesInstallApp(text: String): Boolean {
@@ -211,24 +231,32 @@ class LocalIntentMatcher @Inject constructor() {
 
     private fun extractAppName(text: String): String? {
         val knownApps = listOf(
-            "微信", "支付宝", "抖音", "淘宝", "美团", "高德",
-            "相机", "照片", "相册", "设置", "电话", "短信",
-            "地图", "天气", "音乐", "视频", "浏览器"
+            "微信", "wechat", "WeChat",
+            "支付宝", "抖音", "淘宝", "美团", "高德",
+            "相机", "照片", "相册", "设置", "电话", "短信", "通讯录",
+            "地图", "天气", "音乐", "视频", "浏览器", "日历",
+            "计算器", "手电筒", "闹钟", "时钟", "QQ", "微博",
+            "小红书", "拼多多", "京东", "滴滴", "饿了么"
         )
         for (app in knownApps) {
-            if (text.contains(app)) return app
+            if (text.contains(app, ignoreCase = true)) {
+                Log.d(TAG, "extractAppName found known app: '$app'")
+                return app
+            }
         }
 
         val patterns = listOf(
-            Regex("(?:打开|开|装|安装|下载)(.{2,6})"),
+            Regex("(?:打开|开|点开|帮我开|我要用|用一下|看看)(.{2,6})"),
         )
         for (p in patterns) {
             val match = p.find(text)
             if (match != null) {
-                val name = match.groupValues[1].trim()
+                val name = match.groupValues[1].trim().trimEnd('。', '！', '，', '?', '！', '~', '了', '呗', '吧')
+                Log.d(TAG, "extractAppName pattern matched: '$name'")
                 if (name.length in 2..6) return name
             }
         }
+        Log.d(TAG, "extractAppName: no match")
         return null
     }
 }

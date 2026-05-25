@@ -20,14 +20,26 @@ class ProcessTextInputUseCase @Inject constructor(
         text: String,
         context: ConversationContext
     ): LlmIntentClassifier.LcResult {
-        val llmConfigured = ApiConfig.isLlmConfigured()
-        Log.d("Xiaoxisi", "ProcessTextInput: llmConfigured=$llmConfigured, keyLen=${ApiConfig.llmApiKey.length}")
-        if (!llmConfigured) {
-            Log.d("Xiaoxisi", "ProcessTextInput: using localMatcher")
-            return localMatch(text)
+        val localResult = localMatch(text)
+        val hasLocalAction = localResult.intent !is Intent.Chat && localResult.intent !is Intent.Unknown
+
+        if (!ApiConfig.isLlmConfigured()) {
+            Log.d("Xiaoxisi", "ProcessTextInput: using localMatcher (LLM not configured)")
+            return localResult
         }
-        Log.d("Xiaoxisi", "ProcessTextInput: calling LLM classifier")
-        return classifier.classify(text, buildContextString(context))
+
+        return try {
+            val llmResult = classifier.classify(text, buildContextString(context))
+            if (llmResult.intent is Intent.Unknown || (llmResult.intent is Intent.Chat && hasLocalAction)) {
+                Log.d("Xiaoxisi", "ProcessTextInput: LLM returned ${llmResult.intent::class.simpleName}, local has action=$hasLocalAction, using local")
+                localResult
+            } else {
+                llmResult
+            }
+        } catch (e: Exception) {
+            Log.e("Xiaoxisi", "ProcessTextInput: LLM failed, using local", e)
+            localResult
+        }
     }
 
     private fun localMatch(text: String): LlmIntentClassifier.LcResult {

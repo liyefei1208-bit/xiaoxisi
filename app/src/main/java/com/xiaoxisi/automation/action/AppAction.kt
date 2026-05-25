@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent as AndroidIntent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
 import com.xiaoxisi.domain.model.Intent as UserIntent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -15,7 +16,12 @@ import kotlinx.coroutines.withContext
 class AppAction @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    companion object {
+        private const val TAG = "Xiaoxisi-AppAction"
+    }
+
     suspend fun execute(intent: UserIntent.App): ActionExecutor.ActionResult {
+        Log.d(TAG, "execute: action=${intent.action}, appName=${intent.appName}")
         return withContext(Dispatchers.Main) {
             when (intent.action) {
                 com.xiaoxisi.domain.model.AppAction.OPEN -> openApp(intent.appName)
@@ -26,7 +32,9 @@ class AppAction @Inject constructor(
     }
 
     private fun openApp(appName: String?): ActionExecutor.ActionResult {
+        Log.d(TAG, "openApp: appName='$appName'")
         if (appName.isNullOrBlank()) {
+            Log.d(TAG, "openApp: appName is blank, asking user")
             return ActionExecutor.ActionResult(
                 success = false,
                 message = "你想打开哪个应用？"
@@ -34,11 +42,14 @@ class AppAction @Inject constructor(
         }
 
         val packageName = findPackageName(appName)
+        Log.d(TAG, "openApp: findPackageName('$appName') = '$packageName'")
         if (packageName != null) {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+            Log.d(TAG, "openApp: getLaunchIntentForPackage('$packageName') = $launchIntent")
             if (launchIntent != null) {
                 launchIntent.addFlags(AndroidIntent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(launchIntent)
+                Log.d(TAG, "openApp: launched $appName successfully!")
                 return ActionExecutor.ActionResult(
                     success = true,
                     message = "已经帮你打开了$appName"
@@ -46,6 +57,7 @@ class AppAction @Inject constructor(
             }
         }
 
+        Log.d(TAG, "openApp: app not found, searching")
         return ActionExecutor.ActionResult(
             success = true,
             message = "没有找到${appName}，我帮你搜索一下"
@@ -109,20 +121,29 @@ class AppAction @Inject constructor(
         packageMap[appName]?.let {
             try {
                 context.packageManager.getPackageInfo(it, 0)
+                Log.d(TAG, "findPackageName: found in map '$appName' -> '$it' (verified installed)")
                 return it
-            } catch (_: PackageManager.NameNotFoundException) {}
+            } catch (_: PackageManager.NameNotFoundException) {
+                Log.d(TAG, "findPackageName: map entry '$it' NOT installed")
+            }
         }
 
+        Log.d(TAG, "findPackageName: '$appName' not in packageMap, scanning installed apps...")
         try {
             val packages = context.packageManager.getInstalledApplications(0)
+            Log.d(TAG, "findPackageName: scanning ${packages.size} installed apps")
             for (pkg in packages) {
                 val label = context.packageManager.getApplicationLabel(pkg).toString()
                 if (label.contains(appName, ignoreCase = true)) {
+                    Log.d(TAG, "findPackageName: found by label '$label' -> '${pkg.packageName}'")
                     return pkg.packageName
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e(TAG, "findPackageName: error scanning installed apps", e)
+        }
 
+        Log.d(TAG, "findPackageName: '$appName' not found anywhere")
         return null
     }
 }

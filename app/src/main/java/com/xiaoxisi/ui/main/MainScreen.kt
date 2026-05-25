@@ -1,10 +1,15 @@
 package com.xiaoxisi.ui.main
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,11 +48,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.xiaoxisi.ui.theme.Beige
 import com.xiaoxisi.ui.theme.BeigeDark
@@ -66,6 +74,15 @@ fun MainScreen(
     val listState = rememberLazyListState()
     var showTextInput by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.startRecording()
+        }
+    }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -76,10 +93,10 @@ fun MainScreen(
     Scaffold(
         containerColor = Beige
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
         ) {
             HeaderBar(onSettingsClick = onNavigateToSettings)
 
@@ -97,7 +114,7 @@ fun MainScreen(
             ) {
                 if (uiState.messages.isEmpty()) {
                     item { Spacer(modifier = Modifier.height(60.dp)) }
-                    item { WelcomeSection() }
+                    item { WelcomeSection(onSuggestionClick = { viewModel.sendText(it) }) }
                 }
 
                 items(uiState.messages, key = { it.id }) { message ->
@@ -120,31 +137,44 @@ fun MainScreen(
                 item { Spacer(modifier = Modifier.height(8.dp)) }
             }
 
-            AnimatedVisibility(
-                visible = showTextInput,
-                enter = fadeIn() + slideInVertically()
+            Column(
+                modifier = Modifier.imePadding()
             ) {
-                TextInputBar(
-                    value = textInput,
-                    onValueChange = { textInput = it },
-                    onSend = {
-                        if (textInput.isNotBlank()) {
-                            viewModel.sendText(textInput.trim())
-                            textInput = ""
-                            showTextInput = false
-                        }
-                    },
-                    onClose = { showTextInput = false }
-                )
-            }
+                AnimatedVisibility(
+                    visible = showTextInput,
+                    enter = fadeIn() + slideInVertically()
+                ) {
+                    TextInputBar(
+                        value = textInput,
+                        onValueChange = { textInput = it },
+                        onSend = {
+                            if (textInput.isNotBlank()) {
+                                viewModel.sendText(textInput.trim())
+                                textInput = ""
+                                showTextInput = false
+                            }
+                        },
+                        onClose = { showTextInput = false }
+                    )
+                }
 
-            VoiceInputBar(
-                isRecording = uiState.isRecording,
-                onRecordStart = { viewModel.startRecording() },
-                onRecordStop = { viewModel.stopRecording() },
-                onToggleTextInput = { showTextInput = !showTextInput },
-                onClearHistory = { viewModel.clearHistory() }
-            )
+                if (!showTextInput) {
+                    VoiceInputBar(
+                        isRecording = uiState.isRecording,
+                        onRecordStart = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                                == PackageManager.PERMISSION_GRANTED) {
+                                viewModel.startRecording()
+                            } else {
+                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        onRecordStop = { viewModel.stopRecording() },
+                        onToggleTextInput = { showTextInput = !showTextInput },
+                        onClearHistory = { viewModel.clearHistory() }
+                    )
+                }
+            }
         }
     }
 }
@@ -178,7 +208,7 @@ private fun HeaderBar(onSettingsClick: () -> Unit) {
 }
 
 @Composable
-private fun WelcomeSection() {
+private fun WelcomeSection(onSuggestionClick: (String) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -204,22 +234,23 @@ private fun WelcomeSection() {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.Center) {
-            SuggestionChip("打开微信")
+            SuggestionChip("打开微信", onClick = { onSuggestionClick("打开微信") })
             Spacer(modifier = Modifier.width(12.dp))
-            SuggestionChip("屏幕太暗")
+            SuggestionChip("屏幕太暗", onClick = { onSuggestionClick("屏幕太暗了") })
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.Center) {
-            SuggestionChip("打电话")
+            SuggestionChip("打电话", onClick = { onSuggestionClick("打电话") })
             Spacer(modifier = Modifier.width(12.dp))
-            SuggestionChip("声音太轻")
+            SuggestionChip("声音太轻", onClick = { onSuggestionClick("声音太轻了") })
         }
     }
 }
 
 @Composable
-private fun SuggestionChip(text: String) {
+private fun SuggestionChip(text: String, onClick: () -> Unit) {
     Surface(
+        modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         color = Color.White,
         shadowElevation = 1.dp

@@ -1,11 +1,9 @@
 package com.xiaoxisi.nlu
 
 import android.util.Log
-import com.google.gson.Gson
 import com.xiaoxisi.core.config.ApiConfig
 import com.xiaoxisi.core.config.PromptTemplates
 import com.xiaoxisi.data.remote.api.LlmApi
-import com.xiaoxisi.data.remote.dto.ClassificationResult as LlmClassificationResult
 import com.xiaoxisi.data.remote.dto.LlmMessage
 import com.xiaoxisi.data.remote.dto.LlmRequest
 import com.xiaoxisi.domain.model.*
@@ -15,20 +13,23 @@ import javax.inject.Singleton
 @Singleton
 class LlmIntentClassifier @Inject constructor(
     private val llmApi: LlmApi,
-    private val gson: Gson
+    private val entityExtractor: EntityExtractor
 ) {
     suspend fun classify(userText: String, context: String = ""): LcResult {
         Log.d("Xiaoxisi", "LLM classify: text=$userText provider=${ApiConfig.llmProvider} baseUrl=${ApiConfig.llmBaseUrl}")
         val userPrompt = PromptTemplates.buildUserPrompt(userText, context)
 
         val request = LlmRequest(
-            model = if (ApiConfig.llmProvider == "deepseek") "deepseek-chat" else "qwen-turbo",
+            model = when (ApiConfig.llmProvider) {
+                "deepseek" -> "deepseek-v4-pro"
+                else -> "qwen-turbo"
+            },
             messages = listOf(
                 LlmMessage("system", PromptTemplates.systemPrompt),
                 LlmMessage("user", userPrompt)
             ),
-            temperature = 0.3,
-            maxTokens = 500
+            temperature = 0.7,
+            maxTokens = 1024
         )
 
         return try {
@@ -61,67 +62,57 @@ class LlmIntentClassifier @Inject constructor(
         }
     }
 
-    private fun parseResponse(jsonContent: String, fallbackText: String): LcResult {
-        return try {
-            val cleanJson = extractJson(jsonContent)
-            val parsed = gson.fromJson(cleanJson, LlmClassificationResult::class.java)
-            val conf = parsed.confidence.toFloat()
-            val entities = parsed.entities ?: emptyMap()
+    private fun parseResponse(content: String, fallbackText: String): LcResult {
+        Log.d("Xiaoxisi", "LLM raw response: $content")
 
-            val userIntent = when (parsed.intent) {
-                "system_setting" -> {
-                    val setting = when (parsed.subIntent) {
-                        "wifi" -> SettingType.WIFI
-                        "brightness" -> SettingType.BRIGHTNESS
-                        "volume" -> SettingType.VOLUME
-                        "font_size" -> SettingType.FONT_SIZE
-                        else -> SettingType.WIFI
-                    }
-                    Intent.SystemSetting(setting, entities["action"] ?: "open", conf)
+        val actionRegex = Regex("""\[ACTION:(\w+):([^\]]*)]""")
+        val actionMatch = actionRegex.find(content)
+
+        if (actionMatch != null) {
+            val actionType = actionMatch.groupValues[1]
+            val actionParam = actionMatch.groupValues[2].trim()
+
+            val replyText = content.substringBeforeLast("[ACTION:")
+                .trimEnd('。', '！', '，', ' ', '\n')
+
+            Log.d("Xiaoxisi", "LLM action detected: type=$actionType, param=$actionParam, reply=$replyText")
+
+            val intent = when (actionType) {
+                "open_app" -> {
+                    val appName = actionParam.ifBlank { null }
+                        ?: entityExtractor.extractAppName(fallbackText)
+                    Intent.App(AppAction.OPEN, appName, 0.9f)
                 }
-                "phone" -> {
-                    val action = when (parsed.subIntent) {
-                        "dial" -> PhoneAction.DIAL
-                        "hangup" -> PhoneAction.HANGUP
-                        "answer" -> PhoneAction.ANSWER
-                        else -> PhoneAction.DIAL
-                    }
-                    Intent.Phone(action, entities["contact"], conf)
+                "wifi" -> Intent.SystemSetting(SettingType.WIFI, "open", 0.9f)
+                "brightness" -> {
+                    val action = if (actionParam.contains("down")) "down" else "up"
+                    Intent.SystemSetting(SettingType.BRIGHTNESS, action, 0.9f)
                 }
-                "app" -> {
-                    val action = when (parsed.subIntent) {
-                        "open" -> AppAction.OPEN
-                        "search" -> AppAction.SEARCH
-                        "install" -> AppAction.INSTALL
-                        else -> AppAction.OPEN
-                    }
-                    Intent.App(action, entities["app"] ?: parsed.subIntent, conf)
+                "volume" -> {
+                    val action = if (actionParam.contains("down")) "down" else "up"
+                    Intent.SystemSetting(SettingType.VOLUME, action, 0.9f)
                 }
-                "chat" -> Intent.Chat(conf)
-                else -> Intent.Unknown(conf)
+                "font_size" -> Intent.SystemSetting(SettingType.FONT_SIZE, "open", 0.9f)
+                "dial" -> {
+                    val contact = actionParam.ifBlank { null }
+                    Intent.Phone(PhoneAction.DIAL, contact, 0.9f)
+                }
+                "hangup" -> Intent.Phone(PhoneAction.HANGUP, null, 0.9f)
+                else -> Intent.Chat(0.9f)
             }
 
-            LcResult(
+            return LcResult(
                 recognizedText = fallbackText,
-                intent = userIntent,
-                replyText = parsed.reply,
-                entities = entities
-            )
-        } catch (e: Exception) {
-            Log.e("Xiaoxisi", "Parse error: ${e.message}", e)
-            LcResult(
-                replyText = "好嘞，我来帮你看看",
-                intent = Intent.Unknown(0.5f)
+                intent = intent,
+                replyText = replyText.ifBlank { "好嘞" }
             )
         }
-    }
 
-    private fun extractJson(text: String): String {
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
-        return if (start >= 0 && end > start) {
-            text.substring(start, end + 1)
-        } else text
+        return LcResult(
+            recognizedText = fallbackText,
+            intent = Intent.Chat(0.8f),
+            replyText = content.trim()
+        )
     }
 
     data class LcResult(

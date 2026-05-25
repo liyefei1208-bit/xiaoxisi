@@ -73,7 +73,7 @@ fun VoiceInputBar(
                     )
                 }
                 Text(
-                    "添加",
+                    "新会话",
                     style = XiaoxisiType.labelSmall,
                     color = TextHint,
                     textAlign = TextAlign.Center

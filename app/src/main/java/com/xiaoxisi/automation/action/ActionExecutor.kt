@@ -1,5 +1,6 @@
 package com.xiaoxisi.automation.action
 
+import android.util.Log
 import com.xiaoxisi.domain.model.Intent
 import com.xiaoxisi.domain.model.PhoneAction
 import javax.inject.Inject
@@ -11,11 +12,19 @@ class ActionExecutor @Inject constructor(
     private val phoneAction: PhoneActionExecutor,
     private val appAction: AppAction
 ) {
+    companion object {
+        private const val TAG = "Xiaoxisi-Executor"
+    }
+
     suspend fun execute(intent: Intent): ActionResult {
+        Log.d(TAG, "execute intent: ${intent::class.simpleName}")
         return when (intent) {
             is Intent.SystemSetting -> systemSettingsAction.execute(intent)
             is Intent.Phone -> phoneAction.execute(intent)
-            is Intent.App -> appAction.execute(intent)
+            is Intent.App -> {
+                Log.d(TAG, "executing App action: action=${intent.action}, appName=${intent.appName}")
+                appAction.execute(intent)
+            }
             is Intent.Chat -> ActionResult(
                 success = true,
                 message = null
