@@ -5,9 +5,13 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +27,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -56,14 +59,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.xiaoxisi.ui.theme.Beige
-import com.xiaoxisi.ui.theme.BeigeDark
-import com.xiaoxisi.ui.theme.Teal
-import com.xiaoxisi.ui.theme.TextHint
+import com.xiaoxisi.ui.theme.BrownBorder
+import com.xiaoxisi.ui.theme.BrownMedium
+import com.xiaoxisi.ui.theme.Orange
+import com.xiaoxisi.ui.theme.OrangeDark
+import com.xiaoxisi.ui.theme.OrangeSurface
 import com.xiaoxisi.ui.theme.TextPrimary
 import com.xiaoxisi.ui.theme.TextSecondary
+import com.xiaoxisi.ui.theme.WarmWhite
 import com.xiaoxisi.ui.theme.White
 import com.xiaoxisi.ui.theme.XiaoxisiType
+import com.xiaoxisi.ui.theme.orangeGradient
+import com.xiaoxisi.ui.theme.orangeGreetingGradient
 
 @Composable
 fun MainScreen(
@@ -91,12 +98,12 @@ fun MainScreen(
     }
 
     Scaffold(
-        containerColor = Beige
+        containerColor = WarmWhite
     ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
             HeaderBar(onSettingsClick = onNavigateToSettings)
 
@@ -113,7 +120,7 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (uiState.messages.isEmpty()) {
-                    item { Spacer(modifier = Modifier.height(60.dp)) }
+                    item { Spacer(modifier = Modifier.height(32.dp)) }
                     item { WelcomeSection(onSuggestionClick = { viewModel.sendText(it) }) }
                 }
 
@@ -163,7 +170,8 @@ fun MainScreen(
                         isRecording = uiState.isRecording,
                         onRecordStart = {
                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-                                == PackageManager.PERMISSION_GRANTED) {
+                                == PackageManager.PERMISSION_GRANTED
+                            ) {
                                 viewModel.startRecording()
                             } else {
                                 audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -184,16 +192,29 @@ private fun HeaderBar(onSettingsClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Beige)
-            .padding(horizontal = 16.dp, vertical = 20.dp),
+            .background(WarmWhite)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(modifier = Modifier.width(48.dp))
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(orangeGradient()),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "希",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = "小希司",
-            style = XiaoxisiType.displayLarge,
+            style = XiaoxisiType.brandTitle,
             color = TextPrimary,
-            textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f)
         )
         IconButton(onClick = onSettingsClick) {
@@ -215,24 +236,55 @@ private fun WelcomeSection(onSuggestionClick: (String) -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(Color.White),
+                .size(88.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(orangeGradient()),
             contentAlignment = Alignment.Center
         ) {
-            Text("希", fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Teal)
+            Text("希", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(orangeGreetingGradient())
+                .padding(24.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "你好，我是小希司",
+                    style = XiaoxisiType.headline,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "用绍兴话跟我说，我来帮你用手机",
+                    style = XiaoxisiType.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Start
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.6f))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "随时可以按下方说话键",
+                        style = XiaoxisiType.caption,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Text("你好，我是小希司", style = XiaoxisiType.headline, color = TextPrimary)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "用绍兴话跟我说，我来帮你用手机",
-            style = XiaoxisiType.bodyMedium,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(32.dp))
         Row(horizontalArrangement = Arrangement.Center) {
             SuggestionChip("打开微信", onClick = { onSuggestionClick("打开微信") })
             Spacer(modifier = Modifier.width(12.dp))
@@ -253,12 +305,13 @@ private fun SuggestionChip(text: String, onClick: () -> Unit) {
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         color = Color.White,
-        shadowElevation = 1.dp
+        shadowElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BrownBorder)
     ) {
         Text(
             text = text,
             style = XiaoxisiType.labelMedium,
-            color = Teal,
+            color = Orange,
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
         )
     }
@@ -266,6 +319,17 @@ private fun SuggestionChip(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun TypingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "dots")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "typingAlpha"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -275,8 +339,8 @@ private fun TypingIndicator() {
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(CircleShape)
-                .background(Teal),
+                .clip(RoundedCornerShape(10.dp))
+                .background(orangeGradient()),
             contentAlignment = Alignment.Center
         ) {
             Text("希", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -284,7 +348,8 @@ private fun TypingIndicator() {
         Spacer(modifier = Modifier.width(8.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, BrownBorder)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -293,26 +358,26 @@ private fun TypingIndicator() {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
-                    color = Teal
+                    color = Orange.copy(alpha = alpha)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("正在理解...", style = XiaoxisiType.bodySmall, color = TextHint)
+                Text("正在理解...", style = XiaoxisiType.bodySmall, color = BrownMedium)
             }
         }
     }
 }
 
 @Composable
-private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
+private fun ErrorBanner(message: String, @Suppress("UNUSED_PARAMETER") onDismiss: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFFFF3E0)
+        color = OrangeSurface
     ) {
         Text(
             text = message,
             style = XiaoxisiType.bodySmall,
-            color = Color(0xFFE65100),
+            color = OrangeDark,
             modifier = Modifier.padding(14.dp)
         )
     }
@@ -320,8 +385,8 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
 
 @Composable
 private fun ApiConfigBanner(llmConfigured: Boolean) {
-    val bgColor = if (llmConfigured) Color(0xFFE3F2FD) else Color(0xFFE8F5E9)
-    val title = if (llmConfigured) "DeepSeek 已接入" else "本地模式"
+    val bgColor = if (llmConfigured) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
+    val title = if (llmConfigured) "AI 已接入" else "本地模式"
     val msg = if (llmConfigured)
         "文字对话使用 AI 智能回复。语音识别未配置。"
     else
@@ -332,7 +397,7 @@ private fun ApiConfigBanner(llmConfigured: Boolean) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("• $title", style = XiaoxisiType.labelSmall, color = Color(0xFF1565C0))
+            Text("$title", style = XiaoxisiType.labelSmall, color = Color(0xFF1565C0))
             Spacer(modifier = Modifier.width(8.dp))
             Text(msg, style = XiaoxisiType.labelSmall, color = Color(0xFF1565C0).copy(alpha = 0.7f))
         }

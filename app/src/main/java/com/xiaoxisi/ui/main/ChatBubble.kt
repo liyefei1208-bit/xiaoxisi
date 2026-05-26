@@ -24,17 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xiaoxisi.domain.model.Message
 import com.xiaoxisi.domain.model.MessageRole
-import com.xiaoxisi.ui.theme.Teal
-import com.xiaoxisi.ui.theme.TealDark
+import com.xiaoxisi.ui.theme.BrownBorder
+import com.xiaoxisi.ui.theme.BrownDark
+import com.xiaoxisi.ui.theme.BrownMedium
+import com.xiaoxisi.ui.theme.Orange
+import com.xiaoxisi.ui.theme.OrangeLight
 import com.xiaoxisi.ui.theme.TextPrimary
 import com.xiaoxisi.ui.theme.White
 import com.xiaoxisi.ui.theme.XiaoxisiType
+import com.xiaoxisi.ui.theme.orangeGradient
 
 @Composable
 fun ChatBubble(message: Message) {
     when (message.role) {
         MessageRole.USER -> UserBubble(message)
-        MessageRole.ASSISTANT -> AISimpleBubble(message)
+        MessageRole.ASSISTANT -> AIBubble(message)
         else -> {}
     }
 }
@@ -54,23 +58,39 @@ private fun UserBubble(message: Message) {
                 topStart = 16.dp,
                 topEnd = 16.dp,
                 bottomStart = 16.dp,
-                bottomEnd = 4.dp
+                bottomEnd = 6.dp
             ),
-            color = Teal,
-            shadowElevation = 1.dp
+            color = Color.Transparent,
+            shadowElevation = 0.dp
         ) {
-            Text(
-                text = message.content,
-                style = XiaoxisiType.bodyLarge,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .background(orangeGradient(), RoundedCornerShape(16.dp))
+                    .then(
+                        Modifier.background(
+                            Color.Transparent,
+                            RoundedCornerShape(
+                                topStart = 16.dp,
+                                topEnd = 16.dp,
+                                bottomStart = 16.dp,
+                                bottomEnd = 6.dp
+                            )
+                        )
+                    )
+            ) {
+                Text(
+                    text = message.content,
+                    style = XiaoxisiType.bodyLarge,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun AISimpleBubble(message: Message) {
+private fun AIBubble(message: Message) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -81,11 +101,16 @@ private fun AISimpleBubble(message: Message) {
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(CircleShape)
-                .background(Color.White),
+                .clip(RoundedCornerShape(10.dp))
+                .background(orangeGradient()),
             contentAlignment = Alignment.Center
         ) {
-            Text("希", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Teal)
+            Text(
+                "希",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
         Spacer(modifier = Modifier.width(8.dp))
         Surface(
@@ -93,16 +118,17 @@ private fun AISimpleBubble(message: Message) {
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
-                bottomStart = 4.dp,
+                bottomStart = 6.dp,
                 bottomEnd = 16.dp
             ),
             color = Color.White,
-            shadowElevation = 1.dp
+            border = androidx.compose.foundation.BorderStroke(1.dp, BrownBorder),
+            shadowElevation = 0.dp
         ) {
             Text(
                 text = message.content,
                 style = XiaoxisiType.bodyLarge,
-                color = TextPrimary,
+                color = BrownDark,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
